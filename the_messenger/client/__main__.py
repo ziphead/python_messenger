@@ -1,4 +1,6 @@
+import json
 import socket
+from datetime import datetime
 from yaml import load, Loader
 from argparse import ArgumentParser
 
@@ -22,23 +24,30 @@ args = parser.parse_args()
 
 if args.config:
     with open(args.config) as file:
-        pass
-        # не пойму пока, зачем клиенту это нужно?
-        # config = load(file, Loader=Loader)
-        # host = config.get('host') or HOST
-        # port = config.get('port') or PORT
-        # encoding_name = config.get('encoding_name') or ENCODING_NAME
-        # buffersize = config.get('buffersize') or BUFFERSIZE
+        config = load(file, Loader=Loader)
+        host = config.get('host') or HOST
+        port = config.get('port') or PORT
+        encoding_name = config.get('encoding_name') or ENCODING_NAME
+        buffersize = config.get('buffersize') or BUFFERSIZE
 
 try:
     sock = socket.socket()
     sock.connect((HOST, PORT))
     print(f'Client started with { HOST }:{ PORT }')
-    while True:
-        value = input('Enter data to send:')
-        bvalue = value.encode(ENCODING_NAME)
-        sock.send(bvalue)
-        data = sock.recv(BUFFERSIZE)
-        print(data.decode(ENCODING_NAME))
+
+    action = input('Enter action to send:')
+    data = input('Enter data to send:')
+
+    request_string = json.dumps(
+        {
+            'action': action,
+            'time': datetime.now().timestamp(),
+            'data': data
+        }
+    )
+
+    sock.send(request_string.encode(ENCODING_NAME))
+    data = sock.recv(BUFFERSIZE)
+    print(data.decode(ENCODING_NAME))
 except KeyboardInterrupt:
     print('Client closed')
