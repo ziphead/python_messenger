@@ -21,7 +21,7 @@ def wrong_encryption_response(code, address, data=None):
         'code': code
     }
 
-
+@logged
 def make_response(request, code, data=None):
     return {
         'action': request.get('action'),
