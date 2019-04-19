@@ -1,6 +1,7 @@
 from datetime import datetime
+from decorators import logged
 
-
+@logged
 def validate_request(raw):
     request_time = raw.get('time')
     request_action = raw.get('action')
@@ -9,6 +10,16 @@ def validate_request(raw):
         return True
 
     return False
+
+@logged
+def wrong_encryption_response(code, address, data=None):
+    return {
+        'action': 'Unauthorized request',
+        'user': address,
+        'time': datetime.now().timestamp(),
+        'data': data,
+        'code': code
+    }
 
 
 def make_response(request, code, data=None):
@@ -20,10 +31,10 @@ def make_response(request, code, data=None):
         'code': code
     }
 
-
+@logged
 def make_400(request):
     return make_response(request, 400, 'Wrong request format')
 
-
+@logged
 def make_404(request):
     return make_response(request, 404, 'Action is not supported')

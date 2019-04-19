@@ -3,6 +3,7 @@ import socket
 from datetime import datetime
 from yaml import load, Loader
 from argparse import ArgumentParser
+from crypt.controller import decryption, encryption
 
 from settings import (
     ENCODING_NAME, VARIABLE, HOST,
@@ -46,8 +47,10 @@ try:
         }
     )
 
-    sock.send(request_string.encode(ENCODING_NAME))
+    cypher_wrap = encryption(request_string.encode(ENCODING_NAME))
+    sock.send(cypher_wrap)
     data = sock.recv(BUFFERSIZE)
-    print(data.decode(ENCODING_NAME))
+    cypher_unwrap = decryption(data)
+    print(cypher_unwrap.decode(ENCODING_NAME))
 except KeyboardInterrupt:
     print('Client closed')

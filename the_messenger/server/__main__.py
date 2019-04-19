@@ -4,13 +4,14 @@ import logging
 
 from yaml import load, Loader
 from argparse import ArgumentParser
+from crypt.controller import decryption, encryption
 
 import settings
 
 from routes import resolve
 from protocol import (
     validate_request, make_response,
-    make_400, make_404
+    make_400, make_404, wrong_encryption_response
 )
 from settings import (
     ENCODING_NAME, HOST,
@@ -38,60 +39,66 @@ if args.config:
         encoding_name = config.get('encoding_name') or ENCODING_NAME
         buffersize = config.get('buffersize') or BUFFERSIZE
 
-logger = logging.getLogger('main')
+
 handler = logging.FileHandler('main.log', encoding=ENCODING_NAME)
 error_handler = logging.FileHandler('error.log', encoding=ENCODING_NAME)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-handler.setLevel(logging.DEBUG)
-error_handler.setLevel(logging.ERROR)
-handler.setFormatter(formatter)
-error_handler.setFormatter(formatter)
-
-logger.setLevel(logging.DEBUG)
-logger.addHandler(handler)
-logger.addHandler(error_handler)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        handler,
+        error_handler,
+        logging.StreamHandler(),
+    ]
+)
 
 try:
     sock = socket.socket()
     sock.bind((host, port))
     sock.listen(5)
-    logger.info(f'Server started with { host }:{ port }')
+    logging.info(f'Server started with { host }:{ port }')
     while True:
         client, address = sock.accept()
-        logger.info(f'Client detected { address }')
+        logging.info(f'Client detected { address }')
         b_request = client.recv(buffersize)
+        if decryption(b_request):
+            b_request = decryption(b_request)
+            request = json.loads(
+                b_request.decode(ENCODING_NAME)
+            )
 
-        request = json.loads(
-            b_request.decode(ENCODING_NAME)
-        )
+            action_name = request.get('action')
 
-        action_name = request.get('action')
+            if validate_request(request):
+                controller = resolve(action_name)
+                if controller:
+                    try:
+                        response = controller(request)
 
-        if validate_request(request):
-            controller = resolve(action_name)
-            if controller:
-                try:
-                    response = controller(request)
-
-                    if response.get('code') != 200:
-                        logger.error(f'Request is not valid')
-                    else:
-                        logger.info(f'Function { controller.__name__ } was called')
-                except Exception as err:
-                    logger.critical(err)
-                    response = make_response(
-                        request, 500, 'Internal server error'
-                    )
+                        if response.get('code') != 200:
+                            logging.error(f'Request is not valid')
+                        else:
+                            logging.info(
+                                f'Function { controller.__name__ } was called')
+                    except Exception as err:
+                        logging.critical(err)
+                        response = make_response(
+                            request, 500, 'Internal server error'
+                        )
+                else:
+                    logging.error(f'Action { action_name } does not exits')
+                    response = make_404(request)
             else:
-                logger.error(f'Action { action_name } does not exits')
-                response = make_404(request)
+                logging.error(f'Request is not valid')
+                response = make_400(request)
+
         else:
-            logger.error(f'Request is not valid')
-            response = make_400(request)
-            
-        s_response = json.dumps(response)
-        client.send(s_response.encode(ENCODING_NAME))
+            logging.error(f'Security Failure')
+            response = wrong_encryption_response(900,address)
         
+        s_response = encryption(json.dumps(response).encode(ENCODING_NAME))
+        client.send(s_response)
+
 except KeyboardInterrupt:
-    logger.info('Client closed')
+    logging.info('Client closed')
