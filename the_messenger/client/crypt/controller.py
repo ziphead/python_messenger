@@ -1,4 +1,3 @@
-from decorators import logged
 from cryptography.fernet import Fernet
 from crypt.settings import KEY
 from cryptography.exceptions import InvalidSignature
@@ -6,7 +5,6 @@ from cryptography.fernet import InvalidToken
 F_KEY = Fernet(KEY)
 
 
-@logged
 def encryption(message):
     try:
         data = F_KEY.encrypt(message)
@@ -15,7 +13,6 @@ def encryption(message):
         return False
 
 
-@logged
 def decryption(message):
     try:
         data = F_KEY.decrypt(message)
