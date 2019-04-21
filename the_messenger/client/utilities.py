@@ -1,6 +1,6 @@
 from decorators import logged
 from cryptography.fernet import Fernet
-from crypt.settings import KEY
+from settings import KEY
 from cryptography.exceptions import InvalidSignature
 from cryptography.fernet import InvalidToken
 F_KEY = Fernet(KEY)

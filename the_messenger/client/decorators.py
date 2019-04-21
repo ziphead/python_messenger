@@ -1,5 +1,5 @@
 import logging
-
+# from untilities import encryption, decryption
 
 logger = logging.getLogger('decorators')
 
@@ -10,3 +10,6 @@ def logged(func):
         return func(request, *args, **kwargs)
     
     return wrapper
+
+# def e_wrap(func):
+#     def wrapper(request, *args, **kwargs):

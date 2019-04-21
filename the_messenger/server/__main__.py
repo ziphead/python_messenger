@@ -1,23 +1,18 @@
 import json
 import socket
+import select
 import logging
 
 from yaml import load, Loader
 from argparse import ArgumentParser
-from crypt.controller import decryption, encryption
 
+from handlers import handle_default_request
 import settings
 
-from routes import resolve
-from protocol import (
-    validate_request, make_response,
-    make_400, make_404, wrong_encryption_response
-)
 from settings import (
     ENCODING_NAME, HOST,
     PORT, BUFFERSIZE
 )
-
 
 host = HOST
 port = PORT
@@ -39,7 +34,6 @@ if args.config:
         encoding_name = config.get('encoding_name') or ENCODING_NAME
         buffersize = config.get('buffersize') or BUFFERSIZE
 
-
 handler = logging.FileHandler('main.log', encoding=ENCODING_NAME)
 error_handler = logging.FileHandler('error.log', encoding=ENCODING_NAME)
 
@@ -53,52 +47,37 @@ logging.basicConfig(
     ]
 )
 
+requests = []
+connections = []
+
 try:
     sock = socket.socket()
     sock.bind((host, port))
+    sock.settimeout(0)
     sock.listen(5)
     logging.info(f'Server started with { host }:{ port }')
     while True:
-        client, address = sock.accept()
-        logging.info(f'Client detected { address }')
-        b_request = client.recv(buffersize)
-        if decryption(b_request):
-            b_request = decryption(b_request)
-            request = json.loads(
-                b_request.decode(ENCODING_NAME)
-            )
+        try:
+            client, address = sock.accept()
+            logging.info(f'Client detected { address }')
+            connections.append(client)
+        except Exception:
+            pass
 
-            action_name = request.get('action')
+        rlist, wlist, xlist = select.select(
+            connections, connections, connections, 0
+        )
 
-            if validate_request(request):
-                controller = resolve(action_name)
-                if controller:
-                    try:
-                        response = controller(request)
+        for w_client in rlist:
+            b_request = w_client.recv(buffersize)
+            requests.append(b_request)
 
-                        if response.get('code') != 200:
-                            logging.error(f'Request is not valid')
-                        else:
-                            logging.info(
-                                f'Function { controller.__name__ } was called')
-                    except Exception as err:
-                        logging.critical(err)
-                        response = make_response(
-                            request, 500, 'Internal server error'
-                        )
-                else:
-                    logging.error(f'Action { action_name } does not exits')
-                    response = make_404(request)
-            else:
-                logging.error(f'Request is not valid')
-                response = make_400(request)
+        if requests:
+            b_request = requests.pop()
+            b_response = handle_default_request(b_request)
 
-        else:
-            logging.error(f'Security Failure')
-            response = wrong_encryption_response(900,address)
-        
-        s_response = encryption(json.dumps(response).encode(ENCODING_NAME))
-        client.send(s_response)
+            for r_client in wlist:
+                r_client.send(b_response)
 
 except KeyboardInterrupt:
     logging.info('Client closed')

@@ -5,6 +5,7 @@ from yaml import load, Loader
 from argparse import ArgumentParser
 from crypt.controller import decryption, encryption
 
+
 from settings import (
     ENCODING_NAME, VARIABLE, HOST,
     PORT, BUFFERSIZE
