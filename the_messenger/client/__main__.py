@@ -3,14 +3,13 @@ import socket
 from datetime import datetime
 from yaml import load, Loader
 from argparse import ArgumentParser
-from crypt.controller import decryption, encryption
+from decorators import compressed, e_wrap
 
 
 from settings import (
     ENCODING_NAME, VARIABLE, HOST,
     PORT, BUFFERSIZE
 )
-
 
 host = HOST
 port = PORT
@@ -23,6 +22,20 @@ parser.add_argument(
     help='Sets run configuration'
 )
 args = parser.parse_args()
+
+@compressed
+@e_wrap('en')
+def wrap_handler(json_data):
+    json_bytes = json_data.encode(ENCODING_NAME)
+    return json_bytes
+
+
+@e_wrap('de')
+@compressed
+def unwrap_handler(json_bytes):
+    json_data = json_bytes.decode(ENCODING_NAME)
+    return json_data
+
 
 if args.config:
     with open(args.config) as file:
@@ -48,10 +61,10 @@ try:
         }
     )
 
-    cypher_wrap = encryption(request_string.encode(ENCODING_NAME))
+    cypher_wrap = wrap_handler(request_string)
     sock.send(cypher_wrap)
     data = sock.recv(BUFFERSIZE)
-    cypher_unwrap = decryption(data)
-    print(cypher_unwrap.decode(ENCODING_NAME))
+    cypher_unwrap = unwrap_handler(data)
+    # print(cypher_unwrap.decode(ENCODING_NAME))
 except KeyboardInterrupt:
     print('Client closed')

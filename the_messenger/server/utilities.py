@@ -1,4 +1,4 @@
-# from decorators import logged
+
 from cryptography.fernet import Fernet
 from settings import KEY
 from cryptography.exceptions import InvalidSignature

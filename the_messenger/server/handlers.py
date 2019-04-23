@@ -8,7 +8,7 @@ from protocol import (
 from decorators import compressed, e_wrap
 from settings import ENCODING_NAME
 
-
+@e_wrap
 @compressed
 def handle_default_request(raw_request):
     request = json.loads(
