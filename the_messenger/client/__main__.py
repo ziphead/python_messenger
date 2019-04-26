@@ -1,9 +1,11 @@
 import json
+import zlib
 import socket
+import logging
 from datetime import datetime
 from yaml import load, Loader
 from argparse import ArgumentParser
-from decorators import compressed, e_wrap
+from decorators import e_wrap
 
 
 from settings import (
@@ -23,17 +25,30 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-@compressed
+handler = logging.FileHandler('main.log', encoding=ENCODING_NAME)
+error_handler = logging.FileHandler('error.log', encoding=ENCODING_NAME)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        handler,
+        error_handler,
+        logging.StreamHandler(),
+    ]
+)
+
 @e_wrap('en')
-def wrap_handler(json_data):
+def wrap_handler(json_data):   
     json_bytes = json_data.encode(ENCODING_NAME)
+    json_bytes = zlib.compress(json_bytes)
     return json_bytes
 
 
 @e_wrap('de')
-@compressed
 def unwrap_handler(json_bytes):
-    json_data = json_bytes.decode(ENCODING_NAME)
+    json_data= zlib.decompress(json_bytes)
+    json_data = json_data.decode(ENCODING_NAME)
     return json_data
 
 
@@ -64,7 +79,7 @@ try:
     cypher_wrap = wrap_handler(request_string)
     sock.send(cypher_wrap)
     data = sock.recv(BUFFERSIZE)
-    cypher_unwrap = unwrap_handler(data)
-    # print(cypher_unwrap.decode(ENCODING_NAME))
+    # cypher_unwrap = unwrap_handler(data)
+    # print(cypher_unwrap)
 except KeyboardInterrupt:
     print('Client closed')

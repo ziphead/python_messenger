@@ -61,27 +61,32 @@ try:
             client, address = sock.accept()
             logging.info(f'Client detected { address }')
             connections.append(client)
-
-            try:
-                rlist, wlist, xlist = select.select(
-                    connections, connections, connections, 0
-                )   
-                for w_client in rlist:
-                    b_request = w_client.recv(buffersize)
-                    requests.append(b_request)
-            except Exception:
-                pass           
-
         except Exception:
-            pass
+            pass   
+
+        # rlist = []     
+        try:
+            rlist, wlist, xlist = select.select(
+                connections, connections, connections, 0
+            )
+            print('rlist',rlist)
+            for w_client in rlist:
+                b_request = w_client.recv(buffersize)
+                requests.append(b_request)
+        except Exception:
+            pass        
             
 
 
-        if requests:
+        # print(f'all requests {len(requests)} {requests}')
+        if len(requests) > 0:
+            print(f'all requests {len(requests)} {requests}')
             b_request = requests.pop()
+            print('b_request and a list of them', b_request, requests)
             b_response = handle_default_request(b_request)
 
             for r_client in wlist:
+                print('sending data', b_response)
                 r_client.send(b_response)
 
 except KeyboardInterrupt:

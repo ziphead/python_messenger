@@ -1,4 +1,3 @@
-import zlib
 import inspect
 import logging
 from functools import wraps
@@ -18,51 +17,41 @@ def logged(func):
     return wrapper
 
 
-def compressed(func):
-    @wraps(func)
-    def wrapper(request, *args, **kwargs):
-        if request:
-            b_request = zlib.decompress(request)
-            s_response = func(b_request, *args, **kwargs)
-            return zlib.compress(s_response)
-        else:
-            return func(request, *args, **kwargs)
-
-    return wrapper
-
-
 def e_wrap(encoding_direction):
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
             info = inspect.stack()[0]
             if request:
+                print(f'ecwrap {encoding_direction}', request)
+
                 if encoding_direction == 'de' and ENCRYPTION_STRICT:
                     b_request = decryption(request)
+                    print('b_request ', b_request)
+                    func_job = func(b_request, *args, **kwargs)
                     if b_request:
                         logger.debug(
                             f'{ info.function } - sucsessful decryption')
-                        s_response = func(b_request, *args, **kwargs)
-                        return s_response
+
+                        return func_job
                     else:
                         logger.error(
                             f'{ info.function } - unsucsessful decryption  {request}')
 
                 elif encoding_direction == 'en' and ENCRYPTION_STRICT:
-                    b_request = encryption(request)
+                    func_job = func(request, *args, **kwargs)
+                    b_request = encryption(func_job)
                     if b_request:
                         logger.debug(
                             f'{ info.function } - sucsessful encryption')
-                        s_response = func(b_request, *args, **kwargs)
-                        return s_response
+                        return b_request
                     else:
                         logger.error(
                             f'{ info.function } - unsucsessful encryption  {request}')
                 else:
-                    if request:
-                        logger.debug(f'{ info.function } - NO encryption')
-                        s_response = func(b_request, *args, **kwargs)
-                        return s_response
+
+                    logger.debug(f'{ info.function } - NO encryption')
+                    return func_job
 
             else:
                 logger.error(f'request error - { request }')

@@ -8,6 +8,8 @@ from protocol import (
 from decorators import compressed, e_wrap
 from settings import ENCODING_NAME
 
+
+
 @e_wrap
 @compressed
 def handle_default_request(raw_request):
@@ -22,6 +24,7 @@ def handle_default_request(raw_request):
         if controller:
             try:
                 response = controller(request)
+                print('response',response)
 
                 if response.get('code') != 200:
                     logging.error(f'Request is not valid')

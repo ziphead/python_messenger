@@ -7,6 +7,7 @@ F_KEY = Fernet(KEY)
 
 
 def encryption(message):
+
     try:
         data = F_KEY.encrypt(message)
         return data
